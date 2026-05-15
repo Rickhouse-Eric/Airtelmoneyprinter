@@ -11,7 +11,7 @@ import androidx.preference.PreferenceManager;
 import com.airtel.moneyprinter.R;
 import com.airtel.moneyprinter.data.model.AirtelTransaction;
 import com.dantsu.escposprinter.EscPosPrinter;
-import com.dantsu.escposprinter.connection.serial.SerialConnection;
+import com.dantsu.escposprinter.connection.DeviceConnection;
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 
 import java.io.IOException;
