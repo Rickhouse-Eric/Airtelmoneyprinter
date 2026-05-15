@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PLACEHOLDER LOGO AIRTEL MONEY
+    ==============================
+    Remplacer ce fichier par le vrai logo Airtel Money en format PNG :
+    - Fichier : app/src/main/res/drawable/airtel_logo.png
+    - Taille recommandée : 300x150 px, fond blanc ou transparent
+    - Format : PNG 8-bit
+    
+    Ce placeholder affiche un rectangle rouge avec "AIRTEL MONEY" en texte
+    si le vrai logo n'est pas disponible.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E3001B" />
+    <corners android:radius="4dp" />
+    <size
+        android:width="200dp"
+        android:height="60dp" />
+</shape>

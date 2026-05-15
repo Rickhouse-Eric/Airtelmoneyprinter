@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Airtel Money brand colors -->
+    <color name="airtel_red">#E3001B</color>
+    <color name="airtel_red_dark">#B0001A</color>
+    <color name="airtel_red_light">#FF4444</color>
+
+    <!-- Status colors -->
+    <color name="status_active">#2ECC71</color>
+    <color name="status_inactive">#E74C3C</color>
+    <color name="status_pending">#F39C12</color>
+
+    <!-- UI -->
+    <color name="background">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="divider">#BDBDBD</color>
+
+    <!-- System -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

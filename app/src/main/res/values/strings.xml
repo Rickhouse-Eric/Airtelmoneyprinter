@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Airtel Money Printer</string>
+    <string name="action_settings">Paramètres</string>
+    <string name="action_history">Historique</string>
+    <string name="btn_test_print">🖨 Tester l\'impression</string>
+    <string name="btn_history">📋 Historique</string>
+    <string name="btn_settings">⚙ Paramètres</string>
+    <string name="btn_diagnostic">🔍 Diagnostic port série</string>
+    <string name="label_auto_print">Impression automatique</string>
+    <string name="status_active">● ACTIF</string>
+    <string name="status_inactive">○ INACTIF</string>
+    <string name="pref_printer_port">Port imprimante</string>
+    <string name="pref_auto_print">Impression automatique</string>
+    <string name="pref_sms_sender">Sender SMS Airtel</string>
+    <string name="channel_service_name">Service Airtel Money</string>
+    <string name="channel_print_name">Impressions</string>
+    <string name="notification_service_text">En attente de transactions SMS…</string>
+</resources>

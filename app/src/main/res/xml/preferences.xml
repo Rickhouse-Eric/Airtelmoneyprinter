@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="Impression">
+
+        <SwitchPreferenceCompat
+            android:key="auto_print_enabled"
+            android:title="Impression automatique"
+            android:summary="Imprimer automatiquement chaque SMS Airtel Money"
+            android:defaultValue="true" />
+
+        <ListPreference
+            android:key="printer_port"
+            android:title="Port imprimante"
+            android:summary="Port série de l'imprimante Lenvii"
+            android:defaultValue="auto" />
+
+        <EditTextPreference
+            android:key="printer_baudrate"
+            android:title="Baudrate"
+            android:summary="Vitesse série (défaut: 115200)"
+            android:defaultValue="115200"
+            android:inputType="number" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="SMS">
+
+        <EditTextPreference
+            android:key="sms_sender"
+            android:title="Sender SMS Airtel Money"
+            android:summary="Numéro d'expéditeur à surveiller (défaut: 161)"
+            android:defaultValue="161" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Tickets">
+
+        <SwitchPreferenceCompat
+            android:key="print_logo"
+            android:title="Imprimer le logo Airtel Money"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="print_raw_message"
+            android:title="Imprimer le message original"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="print_sound"
+            android:title="Son après impression"
+            android:defaultValue="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Logs">
+
+        <Preference
+            android:key="export_logs"
+            android:title="Exporter les logs"
+            android:summary="Exporter vers le stockage externe" />
+
+        <Preference
+            android:key="clear_logs"
+            android:title="Effacer les logs" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
