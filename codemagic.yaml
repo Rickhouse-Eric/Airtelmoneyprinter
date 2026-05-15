@@ -1,0 +1,14 @@
+workflows:
+  android-workflow:
+    name: Airtel Money Printer
+    instance_type: mac_mini_m1
+    environment:
+      java: 11
+    scripts:
+      - name: Build APK
+        script: |
+          cd $CM_BUILD_DIR
+          chmod +x gradlew
+          ./gradlew assembleDebug
+    artifacts:
+      - app/build/outputs/**/*.apk
