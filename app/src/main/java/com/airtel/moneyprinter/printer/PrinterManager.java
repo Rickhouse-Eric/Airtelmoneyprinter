@@ -93,7 +93,7 @@ public class PrinterManager {
      */
     public String testPort(String port) {
         try {
-            SerialConnection connection = new SerialConnection(port, BAUD_RATE);
+            com.dantsu.escposprinter.connection.serial.SerialConnection connection = new com.dantsu.escposprinter.connection.serial.SerialConnection(port, BAUD_RATE);
             EscPosPrinter printer = new EscPosPrinter(connection, PRINTER_DPI, PRINTER_WIDTH, 32);
             printer.disconnectPrinter();
             return "OK - Port " + port + " accessible";
@@ -124,7 +124,7 @@ public class PrinterManager {
     private boolean printOnPort(String port, AirtelTransaction tx) {
         EscPosPrinter printer = null;
         try {
-            SerialConnection connection = new SerialConnection(port, BAUD_RATE);
+            com.dantsu.escposprinter.connection.serial.SerialConnection connection = new com.dantsu.escposprinter.connection.serial.SerialConnection(port, BAUD_RATE);
             printer = new EscPosPrinter(connection, PRINTER_DPI, PRINTER_WIDTH, 32);
 
             // Construit et imprime le ticket
