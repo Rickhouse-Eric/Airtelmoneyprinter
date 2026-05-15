@@ -119,7 +119,7 @@ public class PrinterManager {
         Log.e(TAG, "Échec sur tous les ports série");
         return false;
     }
-
+import com.airtel.moneyprinter.data.model.AirtelTransaction;
     /** Imprime sur un port série spécifique */
     private boolean printOnPort(String port, AirtelTransaction tx) {
         EscPosPrinter printer = null;
