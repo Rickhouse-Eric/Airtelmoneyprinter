@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Affiche la dernière transaction
             if (transactions != null && !transactions.isEmpty()) {
-                AirtelTransaction last = transactions.get(0);
+                AirtelTransaction last = transactions.get(0);import com.airtel.moneyprinter.data.model.AirtelTransaction;
                 binding.tvLastTx.setText(
                         "Dernière : " + last.getMontant()
                                 + " | " + last.getDate() + " " + last.getHeure());
