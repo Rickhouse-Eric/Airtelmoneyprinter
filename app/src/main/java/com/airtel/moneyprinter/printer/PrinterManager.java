@@ -11,36 +11,18 @@ import androidx.preference.PreferenceManager;
 import com.airtel.moneyprinter.R;
 import com.airtel.moneyprinter.data.model.AirtelTransaction;
 import com.dantsu.escposprinter.EscPosPrinter;
-import com.dantsu.escposprinter.connection.DeviceConnection;
+import com.dantsu.escposprinter.connection.tcp.TcpConnection;
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 
-import java.io.IOException;
+import java.io.FileOutputStream;
 
-/**
- * Gestionnaire d'impression ESC/POS pour TPE Lenvii.
- *
- * Gère la connexion aux ports série (/dev/ttyS0, /dev/ttyS1, /dev/ttyUSB0),
- * la génération du reçu formaté et l'impression du logo Airtel Money.
- *
- * Bibliothèque : ESCPOS-ThermalPrinter-Android de DantSu (v3.3.0)
- */
 public class PrinterManager {
 
     private static final String TAG = "PrinterManager";
-
-    // Ports série à tester (ordre de priorité pour Lenvii)
-    private static final String[] SERIAL_PORTS = {
-            "/dev/ttyS1",
-            "/dev/ttyS0",
-            "/dev/ttyUSB0"
-    };
-
-    // Baudrate standard Lenvii
+    private static final String[] SERIAL_PORTS = {"/dev/ttyS1", "/dev/ttyS0", "/dev/ttyUSB0"};
     private static final int BAUD_RATE = 115200;
-
-    // Largeur de l'imprimante 58mm (en nombre de caractères)
-    private static final int PRINTER_DPI   = 203;
-    private static final int PRINTER_WIDTH  = 58;
+    private static final int PRINTER_DPI = 203;
+    private static final int PRINTER_WIDTH = 58;
 
     private final Context context;
     private final SharedPreferences prefs;
@@ -50,30 +32,10 @@ public class PrinterManager {
         this.prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // API publique
-    // ────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Imprime un reçu de transaction Airtel Money.
-     * Teste automatiquement les ports série disponibles.
-     *
-     * @return true si impression réussie, false sinon
-     */
     public boolean printTransaction(AirtelTransaction tx) {
-        String preferredPort = prefs.getString("printer_port", "auto");
-
-        if ("auto".equals(preferredPort)) {
-            return printOnAnyPort(tx);
-        } else {
-            return printOnPort(preferredPort, tx);
-        }
+        return printWithRawSerial(tx);
     }
 
-    /**
-     * Imprime un ticket de test.
-     * @return true si succès
-     */
     public boolean printTestTicket() {
         AirtelTransaction test = new AirtelTransaction();
         test.setType(AirtelTransaction.TYPE_RECEPTION);
@@ -83,205 +45,106 @@ public class PrinterManager {
         test.setTransactionId("TEST-001");
         test.setDate("01/01/2025");
         test.setHeure("12:00:00");
-        test.setRawMessage("TEST - Vous avez reçu 25 000 FCFA de CLIENT TEST.");
+        test.setRawMessage("TEST - Vous avez recu 25 000 FCFA de CLIENT TEST.");
         return printTransaction(test);
     }
 
-    /**
-     * Teste la connexion à un port série.
-     * @return message de statut
-     */
     public String testPort(String port) {
         try {
-            com.dantsu.escposprinter.connection.serial.SerialConnection connection = new com.dantsu.escposprinter.connection.serial.SerialConnection(port, BAUD_RATE);
-            EscPosPrinter printer = new EscPosPrinter(connection, PRINTER_DPI, PRINTER_WIDTH, 32);
-            printer.disconnectPrinter();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(port);
+            fos.write(new byte[]{0x1B, 0x40}); // ESC @ reset
+            fos.close();
             return "OK - Port " + port + " accessible";
         } catch (Exception e) {
             return "ERREUR - " + port + ": " + e.getMessage();
         }
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Méthodes privées
-    // ────────────────────────────────────────────────────────────────────────
+    private boolean printWithRawSerial(AirtelTransaction tx) {
+        String preferredPort = prefs.getString("printer_port", "auto");
+        String[] portsToTry = "auto".equals(preferredPort) ? SERIAL_PORTS : new String[]{preferredPort};
 
-    /** Essaie l'impression sur tous les ports jusqu'au succès */
-    private boolean printOnAnyPort(AirtelTransaction tx) {
-        for (String port : SERIAL_PORTS) {
-            Log.d(TAG, "Tentative impression sur: " + port);
-            if (printOnPort(port, tx)) {
-                // Mémorise le port qui fonctionne
+        for (String port : portsToTry) {
+            try {
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(port);
+                byte[] data = buildRawTicket(tx);
+                fos.write(data);
+                fos.flush();
+                fos.close();
+                Log.i(TAG, "Impression reussie sur " + port);
                 prefs.edit().putString("last_working_port", port).apply();
                 return true;
+            } catch (Exception e) {
+                Log.w(TAG, "Echec sur " + port + ": " + e.getMessage());
             }
         }
-        Log.e(TAG, "Échec sur tous les ports série");
         return false;
     }
-    
-    /** Imprime sur un port série spécifique */
-    private boolean printOnPort(String port, AirtelTransaction tx) {
-        EscPosPrinter printer = null;
-        try {
-            com.dantsu.escposprinter.connection.serial.SerialConnection connection = new com.dantsu.escposprinter.connection.serial.SerialConnection(port, BAUD_RATE);
-            printer = new EscPosPrinter(connection, PRINTER_DPI, PRINTER_WIDTH, 32);
 
-            // Construit et imprime le ticket
-            String ticket = buildTicket(tx);
-            printer.printFormattedTextAndCut(ticket);
-
-            Log.i(TAG, "Impression réussie sur " + port);
-            return true;
-
-        } catch (EscPosConnectionException e) {
-            Log.w(TAG, "Connexion impossible sur " + port + ": " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            Log.e(TAG, "Erreur impression sur " + port + ": " + e.getMessage());
-            return false;
-        } finally {
-            if (printer != null) {
-                try {
-                    printer.disconnectPrinter();
-                } catch (Exception ignored) {}
-            }
-        }
-    }
-
-    /**
-     * Construit le texte formaté ESC/POS du reçu.
-     *
-     * Syntaxe DantSu :
-     * [L]  = Align Left
-     * [C]  = Align Center
-     * [R]  = Align Right
-     * [B]  = Bold
-     * [U]  = Underline
-     * [BIG]= Double taille
-     * [NORMAL] = Taille normale
-     */
-    private String buildTicket(AirtelTransaction tx) {
+    private byte[] buildRawTicket(AirtelTransaction tx) {
         StringBuilder sb = new StringBuilder();
 
-        // ── Logo Airtel Money (image bitmap) ──────────────────────────────
-        // Note: DantSu supporte l'impression d'images via printFormattedText
-        // Le logo est inséré comme image bitmap redimensionnée à 150px de large
-        // Si l'image n'est pas disponible, on affiche le texte de remplacement
-        try {
-            Bitmap logo = BitmapFactory.decodeResource(context.getResources(), R.drawable.airtel_logo);
-            if (logo != null) {
-                // Resize logo pour 58mm (max ~384px à 203dpi, ici ~150px pour centrage)
-                int targetWidth = 150;
-                int targetHeight = (int) (logo.getHeight() * ((float) targetWidth / logo.getWidth()));
-                Bitmap resized = Bitmap.createScaledBitmap(logo, targetWidth, targetHeight, true);
-                // L'image sera insérée via le tag [C] avant le texte
-                // DantSu gère les images séparément ; on procède texte complet ci-après
-                resized.recycle();
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Logo non disponible, utilisation texte: " + e.getMessage());
-        }
+        // Reset imprimante
+        sb.append("\u001B@");
 
-        // ── En-tête ───────────────────────────────────────────────────────
-        sb.append("[C]<img>" + getLogoBase64Tag() + "</img>\n");
-        sb.append("[C]================================\n");
-        sb.append("[C]<b><font size='big'>AIRTEL MONEY</font></b>\n");
-        sb.append("[C]================================\n");
-        sb.append("[C]<b>NOTIFICATION TRANSACTION</b>\n");
-        sb.append("[C]--------------------------------\n");
-        sb.append("\n");
+        // Centrer + titre
+        sb.append("\u001Ba\u0001");
+        sb.append("================================\n");
+        sb.append("\u001BE\u0001"); // gras ON
+        sb.append("AIRTEL MONEY\n");
+        sb.append("\u001BE\u0000"); // gras OFF
+        sb.append("NOTIFICATION TRANSACTION\n");
+        sb.append("================================\n\n");
 
-        // ── Type de transaction ───────────────────────────────────────────
-        sb.append("[C]<b>** ").append(tx.getTypeLabel().toUpperCase()).append(" **</b>\n");
-        sb.append("\n");
+        // Type
+        sb.append("\u001BE\u0001");
+        sb.append("** " + tx.getTypeLabel().toUpperCase() + " **\n\n");
+        sb.append("\u001BE\u0000");
 
-        // ── Montant ───────────────────────────────────────────────────────
-        sb.append("[L]<b>MONTANT :</b>\n");
-        sb.append("[C]<font size='big'><b>").append(tx.getMontant()).append("</b></font>\n");
-        sb.append("\n");
+        // Montant centré en grand
+        sb.append("MONTANT :\n");
+        sb.append("\u001BE\u0001");
+        sb.append(tx.getMontant() != null ? tx.getMontant() : "N/A");
+        sb.append("\n\n");
+        sb.append("\u001BE\u0000");
 
-        // ── Détails ───────────────────────────────────────────────────────
-        sb.append("[L]--------------------------------\n");
+        // Aligner gauche pour les détails
+        sb.append("\u001Ba\u0000");
+        sb.append("--------------------------------\n");
 
         if (tx.getNomClient() != null && !tx.getNomClient().isEmpty()) {
-            sb.append("[L]Client       : ").append(tx.getNomClient()).append("\n");
+            sb.append("Client       : " + tx.getNomClient() + "\n");
         }
-
-        sb.append("[L]Transaction  : ").append(tx.getTransactionId()).append("\n");
-        sb.append("[L]Date         : ").append(tx.getDate()).append("\n");
-        sb.append("[L]Heure        : ").append(tx.getHeure()).append("\n");
-
+        sb.append("Transaction  : " + (tx.getTransactionId() != null ? tx.getTransactionId() : "N/A") + "\n");
+        sb.append("Date         : " + (tx.getDate() != null ? tx.getDate() : "") + "\n");
+        sb.append("Heure        : " + (tx.getHeure() != null ? tx.getHeure() : "") + "\n");
         if (tx.getNouveauSolde() != null && !tx.getNouveauSolde().isEmpty()) {
-            sb.append("[L]Nouveau solde: ").append(tx.getNouveauSolde()).append("\n");
+            sb.append("Nouveau solde: " + tx.getNouveauSolde() + "\n");
         }
+        sb.append("--------------------------------\n\n");
 
-        if (tx.getNumeroTelephone() != null && !tx.getNumeroTelephone().isEmpty()) {
-            sb.append("[L]Tel          : ").append(tx.getNumeroTelephone()).append("\n");
-        }
-
-        sb.append("[L]--------------------------------\n");
-        sb.append("\n");
-
-        // ── Message original ─────────────────────────────────────────────
-        sb.append("[L]<b>Message original :</b>\n");
-        sb.append("[L]").append(wrapText(tx.getRawMessage(), 32)).append("\n");
-        sb.append("\n");
-
-        // ── Pied de page ─────────────────────────────────────────────────
-        sb.append("[C]================================\n");
-        sb.append("[C]<b>Merci d'utiliser Airtel Money</b>\n");
-        sb.append("[C]www.airtel.com\n");
-        sb.append("[C]================================\n");
-        sb.append("\n\n\n");
-
-        return sb.toString();
-    }
-
-    /**
-     * Retourne le tag image DantSu pour le logo Airtel Money.
-     * Si le logo est en ressource drawable, il est encodé en base64.
-     * Sinon, retourne une chaîne vide (le texte de remplacement est utilisé).
-     */
-    private String getLogoBase64Tag() {
-        try {
-            Bitmap logo = BitmapFactory.decodeResource(context.getResources(), R.drawable.airtel_logo);
-            if (logo != null) {
-                // Redimensionnement pour 58mm
-                int w = Math.min(logo.getWidth(), 200);
-                int h = (int) (logo.getHeight() * ((float) w / logo.getWidth()));
-                Bitmap scaled = Bitmap.createScaledBitmap(logo, w, h, true);
-
-                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                scaled.compress(Bitmap.CompressFormat.PNG, 100, baos);
-                byte[] bytes = baos.toByteArray();
-                String b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT);
-
-                scaled.recycle();
-                logo.recycle();
-                return b64;
+        // Message original
+        sb.append("Message original :\n");
+        if (tx.getRawMessage() != null) {
+            String raw = tx.getRawMessage();
+            for (int i = 0; i < raw.length(); i += 30) {
+                sb.append(raw.substring(i, Math.min(i + 30, raw.length()))).append("\n");
             }
-        } catch (Exception e) {
-            Log.w(TAG, "Impossible d'encoder le logo: " + e.getMessage());
         }
-        return "";
-    }
+        sb.append("\n");
 
-    /**
-     * Découpe un texte long en lignes de maxWidth caractères.
-     */
-    private String wrapText(String text, int maxWidth) {
-        if (text == null) return "";
-        if (text.length() <= maxWidth) return text;
+        // Pied de page centré
+        sb.append("\u001Ba\u0001");
+        sb.append("================================\n");
+        sb.append("\u001BE\u0001");
+        sb.append("Merci d'utiliser Airtel Money\n");
+        sb.append("\u001BE\u0000");
+        sb.append("================================\n");
 
-        StringBuilder result = new StringBuilder();
-        int i = 0;
-        while (i < text.length()) {
-            int end = Math.min(i + maxWidth, text.length());
-            result.append(text, i, end);
-            if (end < text.length()) result.append("\n[L]");
-            i = end;
-        }
-        return result.toString();
+        // Sauts de ligne + coupe papier
+        sb.append("\n\n\n");
+        sb.append("\u001Bi"); // coupe papier
+
+        return sb.toString().getBytes();
     }
 }
