@@ -1,6 +1,4 @@
-plugins {
-    id 'com.android.application'
-}
+apply plugin: 'com.android.application'
 
 configurations.all {
     resolutionStrategy {
@@ -27,7 +25,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-   buildFeatures {     viewBinding false } { viewBinding true     dataBinding false }
 }
 
 dependencies {
