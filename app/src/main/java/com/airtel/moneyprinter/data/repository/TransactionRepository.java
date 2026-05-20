@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
+import com.airtel.moneyprinter.AirtelMoneyApp;
 import com.airtel.moneyprinter.data.db.AppDatabase;
 import com.airtel.moneyprinter.data.db.TransactionDao;
 import com.airtel.moneyprinter.data.model.AirtelTransaction;
@@ -25,8 +26,7 @@ public class TransactionRepository {
     }
 
     public TransactionRepository() {
-        android.content.Context ctx = android.app.ActivityThread.currentApplication();
-        AppDatabase db = AppDatabase.getInstance(ctx);
+        AppDatabase db = AirtelMoneyApp.getDatabase();
         this.dao = db.transactionDao();
     }
 
