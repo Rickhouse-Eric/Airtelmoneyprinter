@@ -1,26 +1,17 @@
 package com.airtel.moneyprinter.printer;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.content.SharedPreferences;
-import android.os.IBinder;
-import android.os.RemoteException;
 import android.util.Log;
 
-import androidx.preference.PreferenceManager;
-
 import com.airtel.moneyprinter.data.model.AirtelTransaction;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 
 public class PrinterManager {
 
     private static final String TAG = "PrinterManager";
     private final Context context;
-
-    // Interface AIDL iPOS Lenvii
-    private static final String IPOS_PACKAGE = "com.iposprinter.iposprinterservice";
-    private static final String IPOS_ACTION  = "com.iposprinter.iposprinterservice.IPosPrintService";
 
     public PrinterManager(Context context) {
         this.context = context.getApplicationContext();
@@ -28,9 +19,15 @@ public class PrinterManager {
 
     public boolean printTransaction(AirtelTransaction tx) {
         try {
-            return printWithIPos(buildTicketText(tx));
+            byte[] data = buildTicket(tx);
+            FileOutputStream fos = new FileOutputStream("/dev/ttyMT1");
+            fos.write(data);
+            fos.flush();
+            fos.close();
+            Log.i(TAG, "Impression OK");
+            return true;
         } catch (Exception e) {
-            Log.e(TAG, "Erreur impression: " + e.getMessage());
+            Log.e(TAG, "Erreur: " + e.getMessage());
             return false;
         }
     }
@@ -44,61 +41,62 @@ public class PrinterManager {
         test.setTransactionId("TEST-001");
         test.setDate("01/01/2025");
         test.setHeure("12:00:00");
-        test.setRawMessage("TEST - Vous avez recu 25 000 FCFA de CLIENT TEST.");
+        test.setRawMessage("TEST - Vous avez recu 25 000 FCFA.");
         return printTransaction(test);
     }
 
     public String testPort(String port) {
-        return "Utilisation SDK iPOS Lenvii";
-    }
-
-    private boolean printWithIPos(String text) {
         try {
-            // Utilise l'Intent iPOS pour imprimer du texte
-            Intent intent = new Intent();
-            intent.setComponent(new ComponentName(IPOS_PACKAGE,
-                    IPOS_PACKAGE + ".IPosPrintService"));
-
-            // Méthode 1 : via broadcast
-            Intent broadcastIntent = new Intent(IPOS_ACTION);
-            broadcastIntent.setPackage(IPOS_PACKAGE);
-            broadcastIntent.putExtra("printContent", text);
-            broadcastIntent.putExtra("printType", 0); // 0 = texte
-            context.sendBroadcast(broadcastIntent);
-
-            // Méthode 2 : écriture directe sur ttyMT1
-            try {
-                java.io.FileOutputStream fos = new java.io.FileOutputStream("/dev/ttyMT1");
-                fos.write(buildEscPosBytes(text));
-                fos.flush();
-                fos.close();
-                Log.i(TAG, "Impression ttyMT1 OK");
-                return true;
-            } catch (Exception e2) {
-                Log.w(TAG, "ttyMT1 failed: " + e2.getMessage());
-            }
-
-            return true;
+            FileOutputStream fos = new FileOutputStream("/dev/ttyMT1");
+            fos.write(new byte[]{0x1B, 0x40});
+            fos.close();
+            return "OK - /dev/ttyMT1 accessible";
         } catch (Exception e) {
-            Log.e(TAG, "printWithIPos error: " + e.getMessage());
-            return false;
+            return "ERREUR - " + port + ": " + e.getMessage();
         }
     }
 
-    private byte[] buildEscPosBytes(String text) {
-        byte[] reset = {0x1B, 0x40};
-        byte[] center = {0x1B, 0x61, 0x01};
-        byte[] left = {0x1B, 0x61, 0x00};
-        byte[] bold_on = {0x1B, 0x45, 0x01};
-        byte[] bold_off = {0x1B, 0x45, 0x00};
-        byte[] cut = {0x1D, 0x56, 0x41, 0x00};
-        byte[] feed = {0x0A, 0x0A, 0x0A};
-
-        try {
-            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-            bos.write(reset);
-            bos.write(center);
-            bos.write(bold_on);
-            bos.write("================================\n".getBytes("GBK"));
-            bos.write("     AIRTEL MONEY PRINTER
-".getBytes("GBK"));
+    private byte[] buildTicket(AirtelTransaction tx) throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        bos.write(new byte[]{0x1B, 0x40});
+        bos.write(new byte[]{0x1B, 0x61, 0x01});
+        bos.write(new byte[]{0x1B, 0x45, 0x01});
+        bos.write("================================\n".getBytes());
+        bos.write("      AIRTEL MONEY\n".getBytes());
+        bos.write("================================\n".getBytes());
+        bos.write("  NOTIFICATION TRANSACTION\n".getBytes());
+        bos.write("================================\n".getBytes());
+        bos.write(new byte[]{0x1B, 0x45, 0x00});
+        bos.write(new byte[]{0x1B, 0x61, 0x00});
+        bos.write("\n".getBytes());
+        bos.write(("Type        : " + tx.getTypeLabel() + "\n").getBytes());
+        bos.write(("Montant     : " + (tx.getMontant() != null ? tx.getMontant() : "N/A") + "\n").getBytes());
+        if (tx.getNomClient() != null) {
+            bos.write(("Client      : " + tx.getNomClient() + "\n").getBytes());
+        }
+        bos.write(("Transaction : " + tx.getTransactionId() + "\n").getBytes());
+        bos.write(("Date        : " + tx.getDate() + "\n").getBytes());
+        bos.write(("Heure       : " + tx.getHeure() + "\n").getBytes());
+        if (tx.getNouveauSolde() != null) {
+            bos.write(("Solde       : " + tx.getNouveauSolde() + "\n").getBytes());
+        }
+        bos.write("--------------------------------\n".getBytes());
+        if (tx.getRawMessage() != null) {
+            bos.write("Message:\n".getBytes());
+            String raw = tx.getRawMessage();
+            for (int i = 0; i < raw.length(); i += 30) {
+                bos.write(raw.substring(i, Math.min(i + 30, raw.length())).getBytes());
+                bos.write("\n".getBytes());
+            }
+        }
+        bos.write(new byte[]{0x1B, 0x61, 0x01});
+        bos.write(new byte[]{0x1B, 0x45, 0x01});
+        bos.write("================================\n".getBytes());
+        bos.write("Merci d'utiliser Airtel Money\n".getBytes());
+        bos.write("================================\n".getBytes());
+        bos.write(new byte[]{0x1B, 0x45, 0x00});
+        bos.write(new byte[]{0x0A, 0x0A, 0x0A});
+        bos.write(new byte[]{0x1D, 0x56, 0x41, 0x00});
+        return bos.toByteArray();
+    }
+}
