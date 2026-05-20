@@ -19,7 +19,7 @@ import java.io.FileOutputStream;
 public class PrinterManager {
 
     private static final String TAG = "PrinterManager";
-    private static final String[] SERIAL_PORTS = {"/dev/ttyS1", "/dev/ttyS0", "/dev/ttyUSB0"};
+    private static final String[] SERIAL_PORTS = {"/dev/ttyMT1", "/dev/ttyMT0", "/dev/ttyS1", "/dev/ttyS0"};
     private static final int BAUD_RATE = 115200;
     private static final int PRINTER_DPI = 203;
     private static final int PRINTER_WIDTH = 58;
