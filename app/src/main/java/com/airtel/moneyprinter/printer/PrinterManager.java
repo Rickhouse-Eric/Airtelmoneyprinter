@@ -100,4 +100,5 @@ public class PrinterManager {
             bos.write(center);
             bos.write(bold_on);
             bos.write("================================\n".getBytes("GBK"));
-            bos.write("     AIRTEL MONEY PRINTE
+            bos.write("     AIRTEL MONEY PRINTER
+".getBytes("GBK"));
